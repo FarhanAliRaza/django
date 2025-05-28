@@ -1,0 +1,157 @@
+{% comment %} Stress test template with 20+ partials to test caching performance
+{% endcomment %} {% partialdef header %}
+<header class="site-header">
+  <h1>Welcome to Our Site</h1>
+  <nav>Home | About | Contact</nav>
+</header>
+{% endpartialdef %} {% partialdef sidebar %}
+<aside class="sidebar">
+  <h3>Quick Links</h3>
+  <ul>
+    <li>Link 1</li>
+    <li>Link 2</li>
+    <li>Link 3</li>
+  </ul>
+</aside>
+{% endpartialdef %} {% partialdef footer %}
+<footer class="site-footer">
+  <p>&copy; 2024 Our Company. All rights reserved.</p>
+</footer>
+{% endpartialdef %} {% partialdef card-1 %}
+<div class="card">
+  <h4>Card 1</h4>
+  <p>This is content for card 1</p>
+</div>
+{% endpartialdef %} {% partialdef card-2 %}
+<div class="card">
+  <h4>Card 2</h4>
+  <p>This is content for card 2</p>
+</div>
+{% endpartialdef %} {% partialdef card-3 %}
+<div class="card">
+  <h4>Card 3</h4>
+  <p>This is content for card 3</p>
+</div>
+{% endpartialdef %} {% partialdef card-4 %}
+<div class="card">
+  <h4>Card 4</h4>
+  <p>This is content for card 4</p>
+</div>
+{% endpartialdef %} {% partialdef card-5 %}
+<div class="card">
+  <h4>Card 5</h4>
+  <p>This is content for card 5</p>
+</div>
+{% endpartialdef %} {% partialdef widget-weather %}
+<div class="widget">
+  <h5>Weather Widget</h5>
+  <p>Sunny, 72°F</p>
+</div>
+{% endpartialdef %} {% partialdef widget-news %}
+<div class="widget">
+  <h5>Latest News</h5>
+  <p>Breaking: Important news here</p>
+</div>
+{% endpartialdef %} {% partialdef widget-stocks %}
+<div class="widget">
+  <h5>Stock Market</h5>
+  <p>DOW: +0.5%</p>
+</div>
+{% endpartialdef %} {% partialdef widget-calendar %}
+<div class="widget">
+  <h5>Calendar</h5>
+  <p>Today: May 28, 2024</p>
+</div>
+{% endpartialdef %} {% partialdef section-hero %}
+<section class="hero">
+  <h2>Hero Section</h2>
+  <p>Welcome to our amazing website!</p>
+</section>
+{% endpartialdef %} {% partialdef section-features %}
+<section class="features">
+  <h2>Our Features</h2>
+  <ul>
+    <li>Feature 1</li>
+    <li>Feature 2</li>
+    <li>Feature 3</li>
+  </ul>
+</section>
+{% endpartialdef %} {% partialdef section-testimonials %}
+<section class="testimonials">
+  <h2>What Our Customers Say</h2>
+  <blockquote>"Great service!"</blockquote>
+</section>
+{% endpartialdef %} {% partialdef section-pricing %}
+<section class="pricing">
+  <h2>Pricing Plans</h2>
+  <div>Basic: $9/mo | Pro: $19/mo | Enterprise: $99/mo</div>
+</section>
+{% endpartialdef %} {% partialdef section-faq %}
+<section class="faq">
+  <h2>Frequently Asked Questions</h2>
+  <p>Q: How does it work? A: It's simple!</p>
+</section>
+{% endpartialdef %} {% partialdef section-contact %}
+<section class="contact">
+  <h2>Contact Us</h2>
+  <p>Email: info@example.com | Phone: 555-0123</p>
+</section>
+{% endpartialdef %} {% partialdef ad-banner-top %}
+<div class="ad-banner">Top Advertisement Space</div>
+{% endpartialdef %} {% partialdef ad-banner-side %}
+<div class="ad-banner">Side Advertisement Space</div>
+{% endpartialdef %} {% partialdef ad-banner-bottom %}
+<div class="ad-banner">Bottom Advertisement Space</div>
+{% endpartialdef %} {% partialdef meta-tags %}
+<meta name="description" content="Stress test page" />
+<meta name="keywords" content="test, partials, django" />
+{% endpartialdef %} {% partialdef social-links %}
+<div class="social">
+  <a href="#">Facebook</a> | <a href="#">Twitter</a> |
+  <a href="#">LinkedIn</a>
+</div>
+{% endpartialdef %} {% partialdef breadcrumb %}
+<nav class="breadcrumb">Home > Products > Item</nav>
+{% endpartialdef %} {% partialdef search-box %}
+<form class="search">
+  <input type="search" placeholder="Search..." />
+  <button>Go</button>
+</form>
+{% endpartialdef %} {# Main template content #}
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Stress Test Page</title>
+    {% partial meta-tags %}
+  </head>
+  <body>
+    {% partial header %} {% partial breadcrumb %} {% partial search-box %} {%
+    partial ad-banner-top %}
+
+    <main>
+      {% partial section-hero %}
+
+      <div class="content-grid">
+        <div class="main-content">
+          {% partial section-features %} {% partial section-testimonials %} {%
+          partial section-pricing %} {% partial section-faq %} {% partial
+          section-contact %}
+
+          <div class="cards">
+            {% partial card-1 %} {% partial card-2 %} {% partial card-3 %} {%
+            partial card-4 %} {% partial card-5 %}
+          </div>
+        </div>
+
+        <div class="sidebar-content">
+          {% partial sidebar %} {% partial widget-weather %} {% partial
+          widget-news %} {% partial widget-stocks %} {% partial widget-calendar
+          %} {% partial ad-banner-side %}
+        </div>
+      </div>
+    </main>
+
+    {% partial social-links %} {% partial ad-banner-bottom %} {% partial footer
+    %}
+  </body>
+</html>

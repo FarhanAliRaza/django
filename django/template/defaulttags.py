@@ -1700,7 +1700,20 @@ class SubDictionaryWrapper:
         self.lookup_key = lookup_key
 
     def __getitem__(self, key):
-        return self.parent_dict[self.lookup_key][key]
+        try:
+            partials_content = self.parent_dict[self.lookup_key]
+        except KeyError:
+            raise TemplateSyntaxError(
+                "You have not defined any partial. "
+                f"You are trying to access '{key}' partial"
+            )
+
+        try:
+            return partials_content[key]
+        except KeyError:
+            raise TemplateSyntaxError(
+                f"You are trying to access an undefined partial '{key}'"
+            )
 
 
 # Define the partial tag to render the partial content.
