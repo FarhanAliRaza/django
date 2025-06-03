@@ -16,7 +16,9 @@ class PartialTagsTestCase(TestCase):
         # Compile and render the template
         engine = engines["django"]
         t = engine.from_string(template)
-        rendered = t.render(Context({}))
+        # There is inconsistency between from_string and get_template
+        # from_string returns Template object, get_template returns TemplateProxy object
+        rendered = t.render({})
 
         # Check the rendered content
         self.assertEqual("HERE IS THE TEST CONTENT", rendered.strip())
@@ -24,10 +26,10 @@ class PartialTagsTestCase(TestCase):
     def test_just_partial_from_loader(self):
         engine = engines["django"]
 
-        template = engine.get_template("example.html#test-partial")
+        template = engine.get_template("partial_examples.html#test-partial")
         rendered = template.render(Context({}))
         self.assertEqual("TEST-PARTIAL-CONTENT", rendered.strip())
 
-        template = engine.get_template("example.html#inline-partial")
+        template = engine.get_template("partial_examples.html#inline-partial")
         rendered = template.render(Context({}))
         self.assertEqual("INLINE-CONTENT", rendered.strip())
