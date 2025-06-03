@@ -2,7 +2,7 @@
 Testing template partials.
 """
 
-from django.template import Context, engines
+from django.template import Context, TemplateSyntaxError, engines
 from django.test import TestCase
 
 
@@ -33,3 +33,16 @@ class PartialTagsTestCase(TestCase):
         template = engine.get_template("partial_examples.html#inline-partial")
         rendered = template.render(Context({}))
         self.assertEqual("INLINE-CONTENT", rendered.strip())
+
+    def test_undefined_partial_error(self):
+        template = """
+        {% partial testing-partial %}
+        """
+
+        engine = engines["django"]
+        t = engine.from_string(template)
+        with self.assertRaisesMessage(
+            TemplateSyntaxError,
+            "You are trying to access an undefined partial 'testing-partial'",
+        ):
+            t.render({})
