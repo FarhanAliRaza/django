@@ -29,6 +29,7 @@ from .base import (
     VARIABLE_TAG_START,
     Node,
     NodeList,
+    Template,
     TemplateSyntaxError,
     VariableDoesNotExist,
     kwarg_re,
@@ -1566,37 +1567,27 @@ def do_with(parser, token):
     return WithNode(None, None, nodelist, extra_context=extra_context)
 
 
-class TemplateProxy:
+class TemplateProxy(Template):
     """
-    Wraps nodelist as partial, in order to bind context.
+    A real Django Template that wraps a pre-compiled nodelist.
+
+    It inherits from the base Template to work with test instrumentation,
+    but provides a dynamic `source` property to ensure debug pages
+    can correctly locate the origin of the partial.
     """
 
     def __init__(self, nodelist, origin, name):
+        # We don't call super().__init__() to avoid re-parsing.
+        # We manually set the attributes the base Template expects.
         self.nodelist = nodelist
         self.origin = origin
         self.name = name
-
-    def get_exception_info(self, exception, token):
-        template = self.origin.loader.get_template(self.origin.template_name)
-        return template.get_exception_info(exception, token)
+        # self.engine = engine
 
     @property
     def source(self):
         template = self.origin.loader.get_template(self.origin.template_name)
         return template.source
-
-    def _render(self, context):
-        return self.nodelist.render(context)
-
-    def render(self, context):
-        "Display stage -- can be called many times"
-        with context.render_context.push_state(self):
-            if context.template is None:
-                with context.bind_template(self):
-                    context.template_name = self.name
-                    return self._render(context)
-            else:
-                return self._render(context)
 
 
 class DefinePartialNode(Node):
@@ -1671,6 +1662,11 @@ def _define_partial(parser, token, end_tag):
     endpartial = parser.next_token()
     if endpartial.contents not in acceptable_endpartials:
         parser.invalid_block_tag(endpartial, end_tag, acceptable_endpartials)
+
+    # # Get the engine from parser, or use default if not available
+    # from django.template.engine import Engine
+
+    # engine = getattr(parser, "engine", None) or Engine.get_default()
 
     # Store the partial nodelist in the parser.extra_data attribute,
     parser.extra_data.setdefault("template-partials", {})

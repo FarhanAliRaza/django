@@ -5,9 +5,26 @@ Testing template partials.
 import os
 from unittest import mock
 
-from django.template import Context, TemplateSyntaxError, engines
+from django.http import HttpResponse
+from django.template import TemplateSyntaxError, engines
 from django.template.backends.django import DjangoTemplates
 from django.test import TestCase
+from django.test.client import Client
+from django.test.utils import override_settings
+from django.urls import path
+
+
+def partial_view(request):
+    """A simple view that renders a template partial."""
+    from django.template import engines
+
+    template = engines["django"].get_template("partial_examples.html#test-partial")
+    return HttpResponse(template.render({"test_var": "test_value"}))
+
+
+urlpatterns = [
+    path("test-partial/", partial_view, name="test-partial"),
+]
 
 
 class PartialTagsTestCase(TestCase):
@@ -31,11 +48,11 @@ class PartialTagsTestCase(TestCase):
         engine = engines["django"]
 
         template = engine.get_template("partial_examples.html#test-partial")
-        rendered = template.render(Context({}))
+        rendered = template.render({})
         self.assertEqual("TEST-PARTIAL-CONTENT", rendered.strip())
 
         template = engine.get_template("partial_examples.html#inline-partial")
-        rendered = template.render(Context({}))
+        rendered = template.render({})
         self.assertEqual("INLINE-CONTENT", rendered.strip())
 
     def test_undefined_partial_error(self):
@@ -50,6 +67,35 @@ class PartialTagsTestCase(TestCase):
             "You are trying to access an undefined partial 'testing-partial'",
         ):
             t.render({})
+
+
+@override_settings(ROOT_URLCONF=__name__)
+class TestClientPartialContextTestCase(TestCase):
+    """Test case for the issue with template partials and test client context."""
+
+    def test_partial_response_context_is_available(self):
+        """
+        Test that response.context is not None when rendering template partials.
+        This test demonstrates the issue described in:
+        https://github.com/carltongibson/django-template-partials/issues/54
+        """
+        client = Client()
+        response = client.get("/test-partial/")
+
+        # The response should be successful
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "TEST-PARTIAL-CONTENT")
+
+        # This is the main issue: response.context should not be None
+
+        self.assertIsNotNone(
+            response.context,
+            "response.context should not be None when rendering partials",
+        )
+
+        # If context is available, we should be able to access template variables
+        if response.context:
+            self.assertEqual(response.context.get("test_var"), "test_value")
 
 
 class PartialTagsCacheTestCase(TestCase):
@@ -91,7 +137,7 @@ class PartialTagsCacheTestCase(TestCase):
             partial_template = backend.get_template(
                 "partial_examples.html#test-partial"
             )
-            rendered_partial = partial_template.render(Context({}))
+            rendered_partial = partial_template.render({})
             self.assertEqual("TEST-PARTIAL-CONTENT", rendered_partial.strip())
 
             # Assert filesystem was only accessed once

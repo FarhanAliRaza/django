@@ -92,9 +92,8 @@ class DjangoTemplates(BaseEngine):
         except KeyError:
             # Partial not found on this template.
             raise TemplateDoesNotExist(partial_name, tried=[template_name])
-        partial.engine = self.engine
 
-        return partial
+        return Template(partial, self)
 
     def get_templatetag_libraries(self, custom_libraries):
         """
