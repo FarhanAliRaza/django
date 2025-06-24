@@ -1018,7 +1018,8 @@ Argument          Description
 Examples:
 
 * ``{% partialdef card %}...{% endpartialdef %}`` defines a partial named "card".
-* ``{% partialdef header inline %}...{% endpartialdef %}`` defines and immediately renders a partial named "header".
+* ``{% partialdef header inline %}...{% endpartialdef %}`` defines and immediately
+  renders a partial named "header".
 
 .. code-block:: html+django
 
