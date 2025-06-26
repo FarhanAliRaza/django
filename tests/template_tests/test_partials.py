@@ -47,7 +47,8 @@ class PartialTagsTestCase(TestCase):
         t = engine.from_string(template)
         with self.assertRaisesMessage(
             TemplateSyntaxError,
-            "You are trying to access an undefined partial 'testing-partial'",
+            "No partials are defined. You are trying to access 'testing-partial' "
+            "partial",
         ):
             t.render({})
 
