@@ -1694,11 +1694,13 @@ class SubDictionaryWrapper:
 
     def __getitem__(self, key):
         try:
-            partials_content = self.parent_dict.get(self.lookup_key)
-            if partials_content is None:
-                raise TemplateSyntaxError(
-                    f"You are trying to access an undefined partial '{key}'"
-                )
+            partials_content = self.parent_dict[self.lookup_key]
+        except KeyError:
+            raise TemplateSyntaxError(
+                f"No partials are defined. You are trying to access '{key}' partial"
+            )
+
+        try:
             return partials_content[key]
         except KeyError:
             raise TemplateSyntaxError(
