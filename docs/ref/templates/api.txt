@@ -161,7 +161,8 @@ overridden by what's passed by
     **Partial loading:**
 
     To load a specific partial from a template:
-
+    See :ref:`template-partials` for details.
+    
     .. code-block:: python
 
         # Load entire template
