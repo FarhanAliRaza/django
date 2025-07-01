@@ -1627,12 +1627,16 @@ class RenderPartialNode(Node):
 def partialdef_func(parser, token):
     """
     Declare a partial that can be used later in the template.
-    Usage:
+
+    Usage::
+
         {% partialdef partial_name %}
         Partial content goes here
         {% endpartialdef %}
+
     Stores the nodelist in the context under the key "partial_contents" and can
     be retrieved using the {% partial %} tag.
+
     The optional ``inline`` argument will render the contents of the partial
     where it is defined.
     """
@@ -1712,7 +1716,9 @@ def partial_func(parser, token):
     """
     Render a partial that was previously declared using
     the {% partialdef %} tag.
-    Usage:
+
+    Usage::
+
         {% partial partial_name %}
     """
     # Parse the tag
