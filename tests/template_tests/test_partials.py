@@ -3,11 +3,15 @@ Testing template partials.
 """
 
 import os
+from types import ModuleType
 from unittest import mock
 
-from django.template import Context, TemplateSyntaxError, engines
+from django.http import HttpResponse
+from django.template import TemplateSyntaxError, engines
 from django.template.backends.django import DjangoTemplates
-from django.test import TestCase
+from django.template.loader import render_to_string
+from django.test import TestCase, override_settings
+from django.urls import path, reverse
 
 
 class PartialTagsTestCase(TestCase):
@@ -31,11 +35,11 @@ class PartialTagsTestCase(TestCase):
         engine = engines["django"]
 
         template = engine.get_template("partial_examples.html#test-partial")
-        rendered = template.render(Context({}))
+        rendered = template.render({})
         self.assertEqual("TEST-PARTIAL-CONTENT", rendered.strip())
 
         template = engine.get_template("partial_examples.html#inline-partial")
-        rendered = template.render(Context({}))
+        rendered = template.render({})
         self.assertEqual("INLINE-CONTENT", rendered.strip())
 
     def test_undefined_partial_error(self):
@@ -92,8 +96,36 @@ class PartialTagsCacheTestCase(TestCase):
             partial_template = backend.get_template(
                 "partial_examples.html#test-partial"
             )
-            rendered_partial = partial_template.render(Context({}))
+            rendered_partial = partial_template.render({})
             self.assertEqual("TEST-PARTIAL-CONTENT", rendered_partial.strip())
 
             # Assert filesystem was only accessed once
             mock_get_contents.assert_called_once()
+
+
+class ResponseContextWithPartialTests(TestCase):
+    """Ensure that the Django test client captures context
+    when a view renders a partial template ("template.html#partial").
+    """
+
+    def test_response_context_available_for_partial_template(self):
+        # Define a simple view that returns a partial template.
+        def sample_view(request):
+
+            return HttpResponse(
+                render_to_string("partial_examples.html#test-partial", {"foo": "bar"})
+            )
+
+        # Dynamically create a URLs module for this test.
+        urls_module = ModuleType("partial_test_urls")
+        urls_module.urlpatterns = [path("sample/", sample_view, name="sample-view")]
+
+        with override_settings(
+            ROOT_URLCONF=urls_module,
+        ):
+            response = self.client.get(reverse("sample-view"))
+
+        # The test client should have attached context so that we can inspect it.
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.context)
+        self.assertEqual(response.context["foo"], "bar")

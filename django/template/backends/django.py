@@ -94,7 +94,7 @@ class DjangoTemplates(BaseEngine):
             raise TemplateDoesNotExist(partial_name, tried=[template_name])
         partial.engine = self.engine
 
-        return partial
+        return Template(partial, self)
 
     def get_templatetag_libraries(self, custom_libraries):
         """
