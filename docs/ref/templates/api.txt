@@ -161,8 +161,7 @@ overridden by what's passed by
     **Partial loading:**
 
     To load a specific partial from a template:
-    See :ref:`template-partials` for details.
-    
+
     .. code-block:: python
 
         # Load entire template
@@ -170,6 +169,9 @@ overridden by what's passed by
 
         # Load specific partial from template
         partial = engine.get_template("template.html#partial_name")
+
+    See :ref:`template-partials` for more information about defining and using
+    template partials.
 
     When loading partials, the method returns a template object that behaves 
     like a regular :class:`Template` but contains only the partial's content.
