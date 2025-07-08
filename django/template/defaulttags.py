@@ -1689,7 +1689,7 @@ class SubDictionaryWrapper:
     """
     Wrap a parent dictionary, allowing deferred access to a sub-dictionary by key.
     The parser.extra_data storage may not yet be populated when a partial node
-    is defined, so we defer access until rendering.
+    is defined, so defer access until rendering.
     """
 
     def __init__(self, parent_dict, lookup_key):
