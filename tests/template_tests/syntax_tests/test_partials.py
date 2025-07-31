@@ -1,6 +1,11 @@
-from unittest import mock
-
-from django.template import NodeList, PartialTemplate, TemplateSyntaxError
+from django.template import (
+    Context,
+    Engine,
+    TemplateDoesNotExist,
+    TemplateSyntaxError,
+    VariableDoesNotExist,
+)
+from django.template.base import Token, TokenType
 from django.test import SimpleTestCase
 from django.views.debug import ExceptionReporter
 
@@ -270,35 +275,248 @@ Main content with {% partial test-partial %}
         exception_value = str(traceback_data.get("exception_value", ""))
         self.assertIn("Unclosed tag", exception_value)
 
-    def test_partial_template_get_exception_info(self):
-        """PartialTemplate.get_exception_info calls loader.get_template."""
-        mock_loader = mock.Mock()
-        mock_origin = mock.Mock(template_name="test_template.html", loader=mock_loader)
+    def test_partial_runtime_exception_has_debug_info(self):
+        buggy_template = """<h1>Title</h1>
+{% partialdef test-partial %}
+<p>{{ nonexistent|default:alsonotthere }}</p>
+{% endpartialdef %}
+<h2>Sub Title</h2>
+{% partial test-partial %}
+"""
+        engine = Engine(
+            debug=True,
+            loaders=[
+                (
+                    "django.template.loaders.locmem.Loader",
+                    {"template": buggy_template},
+                ),
+            ],
+        )
+        template = engine.get_template("template")
 
-        mock_template = mock.Mock()
-        mock_exception_info = {
-            "line": 42,
-            "name": "test_template.html",
-            "message": "Test error message",
-        }
-        mock_template.get_exception_info.return_value = mock_exception_info
-        mock_loader.get_template.return_value = mock_template
+        context = Context({})
+        with self.assertRaises(VariableDoesNotExist) as cm:
+            template.render(context)
 
-        proxy = PartialTemplate(NodeList(), mock_origin, "test-partial")
+        exc_info = cm.exception.template_debug
 
-        test_exception = Exception("Test exception")
-        mock_token = mock.Mock()
-        mock_token.lineno = 10
+        self.assertEqual(exc_info["during"], "{{ nonexistent|default:alsonotthere }}")
+        self.assertEqual(exc_info["line"], 3)
+        self.assertEqual(exc_info["name"], "template")
+        self.assertIn("Failed lookup", exc_info["message"])
 
-        result = proxy.get_exception_info(test_exception, mock_token)
+    def test_partial_template_get_exception_info_delegation(self):
+        template_content = """<h1>Title</h1>
+{% partialdef test-partial %}
+<p>Content</p>
+{% endpartialdef %}
+"""
+        engine = Engine(
+            debug=True,
+            loaders=[
+                (
+                    "django.template.loaders.locmem.Loader",
+                    {"template": template_content},
+                ),
+            ],
+        )
+        template = engine.get_template("template")
 
-        mock_loader.get_template.assert_called_once_with("test_template.html")
+        partial_template = template.extra_data["template-partials"]["test-partial"]
 
-        mock_template.get_exception_info.assert_called_once_with(
-            test_exception, mock_token
+        test_exc = Exception("Test exception")
+        token = Token(
+            token_type=TokenType.VAR,
+            contents="test",
+            position=(0, 4),
         )
 
-        self.assertEqual(result, mock_exception_info)
-        self.assertEqual(result["line"], 42)
-        self.assertEqual(result["name"], "test_template.html")
-        self.assertEqual(result["message"], "Test error message")
+        exc_info = partial_template.get_exception_info(test_exc, token)
+        self.assertIn("message", exc_info)
+        self.assertIn("line", exc_info)
+        self.assertIn("name", exc_info)
+        self.assertEqual(exc_info["name"], "template")
+        self.assertEqual(exc_info["message"], "Test exception")
+
+    def test_undefined_partial_exception_info(self):
+        template_with_undefined = """<h1>Header</h1>
+{% partial undefined-partial %}
+<p>After undefined partial</p>
+"""
+        engine = Engine(
+            debug=True,
+            loaders=[
+                (
+                    "django.template.loaders.locmem.Loader",
+                    {"template": template_with_undefined},
+                ),
+            ],
+        )
+
+        template = engine.get_template("template")
+        with self.assertRaises(TemplateSyntaxError) as cm:
+            template.render(Context())
+
+        self.assertIn("undefined-partial", str(cm.exception))
+        self.assertIn("is not defined", str(cm.exception))
+
+        exc_debug = cm.exception.template_debug
+
+        self.assertEqual(exc_debug["during"], "{% partial undefined-partial %}")
+        self.assertEqual(exc_debug["line"], 2)
+        self.assertEqual(exc_debug["name"], "template")
+        self.assertIn("undefined-partial", exc_debug["message"])
+
+    def test_undefined_partial_exception_info_template_does_not_exist(self):
+        template_with_no_partials = """<h1>Header</h1>
+<p>This template has no partials defined</p>
+"""
+        engine = Engine(
+            debug=True,
+            loaders=[
+                (
+                    "django.template.loaders.locmem.Loader",
+                    {"existing_template": template_with_no_partials},
+                ),
+            ],
+        )
+
+        with self.assertRaises(TemplateDoesNotExist) as cm:
+            engine.get_template("existing_template#undefined-partial")
+
+        self.assertIn("undefined-partial", str(cm.exception))
+
+    def test_partial_with_syntax_error_exception_info(self):
+        template_with_syntax_error = """<h1>Title</h1>
+{% partialdef syntax-error-partial %}
+    {% if user %}
+        <p>User: {{ user.name }}</p>
+    {% endif
+    <p>Missing closing tag above</p>
+{% endpartialdef %}
+{% partial syntax-error-partial %}
+"""
+        engine = Engine(
+            debug=True,
+            loaders=[
+                (
+                    "django.template.loaders.locmem.Loader",
+                    {"template": template_with_syntax_error},
+                ),
+            ],
+        )
+
+        with self.assertRaises(TemplateSyntaxError) as cm:
+            engine.get_template("template")
+
+        self.assertIn("endif", str(cm.exception).lower())
+
+        exc_debug = cm.exception.template_debug
+
+        self.assertIn("endpartialdef", exc_debug["during"])
+        self.assertEqual(exc_debug["name"], "template")
+        self.assertIn("endif", exc_debug["message"].lower())
+
+    def test_partial_runtime_error_exception_info(self):
+        template_with_runtime_error = """<h1>Title</h1>
+{% load bad_tag %}
+{% partialdef runtime-error-partial %}
+    <p>This will raise an error:</p>
+    {% badsimpletag %}
+{% endpartialdef %}
+{% partial runtime-error-partial %}
+"""
+        engine = Engine(
+            debug=True,
+            libraries={"bad_tag": "template_tests.templatetags.bad_tag"},
+            loaders=[
+                (
+                    "django.template.loaders.locmem.Loader",
+                    {"template": template_with_runtime_error},
+                ),
+            ],
+        )
+
+        template = engine.get_template("template")
+        context = Context()
+
+        with self.assertRaises(RuntimeError) as cm:
+            template.render(context)
+
+        exc_debug = cm.exception.template_debug
+
+        self.assertIn("badsimpletag", exc_debug["during"])
+        self.assertEqual(exc_debug["line"], 5)  # Line 5 is where badsimpletag is
+        self.assertEqual(exc_debug["name"], "template")
+        self.assertIn("bad simpletag", exc_debug["message"])
+
+    def test_nested_partial_error_exception_info(self):
+        template_with_nested = """<h1>Title</h1>
+{% partialdef outer-partial %}
+    <div class="outer">
+        {% partialdef inner-partial %}
+            <p>{{ undefined_var }}</p>
+        {% endpartialdef %}
+        {% partial inner-partial %}
+    </div>
+{% endpartialdef %}
+{% partial outer-partial %}
+"""
+        engine = Engine(
+            debug=True,
+            string_if_invalid="INVALID[%s]",
+            loaders=[
+                (
+                    "django.template.loaders.locmem.Loader",
+                    {"template": template_with_nested},
+                ),
+            ],
+        )
+
+        template = engine.get_template("template")
+        # Since string_if_invalid is set, it won't raise but will show INVALID
+        output = template.render(Context())
+        self.assertIn("INVALID[undefined_var]", output)
+
+    def test_partial_in_extended_template_error(self):
+        parent_template = """<!DOCTYPE html>
+<html>
+<head>{% block title %}Default Title{% endblock %}</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>
+"""
+
+        child_template = """{% extends "parent.html" %}
+{% block content %}
+    {% partialdef content-partial %}
+        <p>{{ missing_variable|undefined_filter }}</p>
+    {% endpartialdef %}
+    {% partial content-partial %}
+{% endblock %}
+"""
+
+        engine = Engine(
+            debug=True,
+            loaders=[
+                (
+                    "django.template.loaders.locmem.Loader",
+                    {
+                        "parent.html": parent_template,
+                        "child.html": child_template,
+                    },
+                ),
+            ],
+        )
+
+        with self.assertRaises(TemplateSyntaxError) as cm:
+            engine.get_template("child.html")
+
+        self.assertIn("undefined_filter", str(cm.exception))
+
+        exc_debug = cm.exception.template_debug
+
+        self.assertIn("undefined_filter", exc_debug["during"])
+        self.assertEqual(exc_debug["name"], "child.html")
+        self.assertIn("undefined_filter", exc_debug["message"])
