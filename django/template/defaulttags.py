@@ -12,6 +12,7 @@ from itertools import groupby
 from django.conf import settings
 from django.http import QueryDict
 from django.utils import timezone
+from django.utils.datastructures import SubDictionaryWrapper
 from django.utils.html import conditional_escape, escape, format_html
 from django.utils.lorem_ipsum import paragraphs, words
 from django.utils.safestring import mark_safe
@@ -40,7 +41,6 @@ from .context import Context
 from .defaultfilters import date
 from .library import Library
 from .smartif import IfParser, Literal
-from .utils import SubDictionaryWrapper
 
 register = Library()
 
@@ -1591,7 +1591,12 @@ class RenderPartialNode(Node):
         self.partial_mapping = partial_mapping
 
     def render(self, context):
-        return self.partial_mapping[self.partial_name].render(context)
+        try:
+            return self.partial_mapping[self.partial_name].render(context)
+        except KeyError:
+            raise TemplateSyntaxError(
+                f"Partial '{self.partial_name}' is not defined in the current template."
+            )
 
 
 @register.tag(name="partialdef")
@@ -1633,6 +1638,11 @@ def partialdef_func(parser, token):
 
     # Store the partial nodelist in the parser.extra_data attribute.
     parser.extra_data.setdefault("template-partials", {})
+    if partial_name in parser.extra_data["template-partials"]:
+        raise TemplateSyntaxError(
+            f"Partial '{partial_name}' is already defined in the "
+            f"'{parser.origin.name}' template."
+        )
     parser.extra_data["template-partials"][partial_name] = PartialTemplate(
         nodelist, parser.origin, partial_name
     )
@@ -1651,7 +1661,7 @@ def partial_func(parser, token):
     """
     match token.split_contents():
         case "partial", partial_name:
-            extra_data = getattr(parser, "extra_data")
+            extra_data = parser.extra_data
             partial_mapping = SubDictionaryWrapper(extra_data, "template-partials")
             return RenderPartialNode(partial_name, partial_mapping=partial_mapping)
         case _:

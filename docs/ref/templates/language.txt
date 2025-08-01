@@ -612,13 +612,6 @@ If you need to adjust the context, use the :ttag:`with` tag:
         {% partial product-card %}
     {% endwith %}
 
-
-.. admonition:: Partial name uniqueness
-
-    You cannot define multiple partials with the same name in the same template.
-    If you do, the last partial definition will overwrite previous ones and be
-    the one that gets rendered.
-
 .. _next section: #automatic-html-escaping
 .. _automatic-html-escaping:
 

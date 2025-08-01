@@ -2,7 +2,13 @@ import os
 from unittest import mock
 
 from django.http import HttpResponse
-from django.template import Template, TemplateDoesNotExist, engines
+from django.template import (
+    Origin,
+    Template,
+    TemplateDoesNotExist,
+    TemplateSyntaxError,
+    engines,
+)
 from django.template.backends.django import DjangoTemplates
 from django.template.loader import render_to_string
 from django.test import TestCase, override_settings
@@ -187,6 +193,17 @@ class RobustPartialHandlingTests(TestCase):
                 self.assertRaisesMessage(TemplateDoesNotExist, partial_name),
             ):
                 engine.get_template(f"template.html#{partial_name}")
+
+    def test_duplicate_partial_names(self):
+        template_source = """
+        {% partialdef duplicate %}DUPLICATE-CONTENT{% endpartialdef %}
+        {% partialdef duplicate %}DUPLICATE-CONTENT-2{% endpartialdef %}
+        """
+        with self.assertRaisesMessage(
+            TemplateSyntaxError,
+            "Partial 'duplicate' is already defined in the 'template.html' template.",
+        ):
+            Template(template_source, origin=Origin(name="template.html"))
 
 
 class FindPartialSourceTests(TestCase):
