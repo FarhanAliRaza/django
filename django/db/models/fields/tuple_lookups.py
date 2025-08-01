@@ -103,7 +103,11 @@ class TupleLookupMixin:
     def process_rhs(self, compiler, connection):
         if self.rhs_is_direct_value():
             args = [
-                Value(val, output_field=col.output_field)
+                (
+                    val
+                    if hasattr(val, "as_sql")
+                    else Value(val, output_field=col.output_field)
+                )
                 for col, val in zip(self.lhs, self.rhs)
             ]
             return compiler.compile(Tuple(*args))
@@ -337,7 +341,11 @@ class TupleIn(TupleLookupMixin, In):
             result.append(
                 Tuple(
                     *[
-                        Value(val, output_field=col.output_field)
+                        (
+                            val
+                            if hasattr(val, "as_sql")
+                            else Value(val, output_field=col.output_field)
+                        )
                         for col, val in zip(lhs, vals)
                     ]
                 )
@@ -370,7 +378,8 @@ class TupleIn(TupleLookupMixin, In):
             return super(TupleLookupMixin, self).as_sql(compiler, connection)
 
         # e.g.: (a, b, c) in [(x1, y1, z1), (x2, y2, z2)] as SQL:
-        # WHERE (a = x1 AND b = y1 AND c = z1) OR (a = x2 AND b = y2 AND c = z2)
+        # WHERE (a = x1 AND b = y1 AND c = z1)
+        #    OR (a = x2 AND b = y2 AND c = z2)
         root = WhereNode([], connector=OR)
         lhs = self.lhs
 
