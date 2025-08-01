@@ -1649,12 +1649,10 @@ def partial_func(parser, token):
 
         {% partial partial_name %}
     """
-    bits = token.split_contents()
-    if len(bits) != 2:
-        raise TemplateSyntaxError(f"'{bits[0]}' tag requires a single argument")
-    tag_name, partial_name = bits
-
-    extra_data = getattr(parser, "extra_data")
-    partial_mapping = SubDictionaryWrapper(extra_data, "template-partials")
-
-    return RenderPartialNode(partial_name, partial_mapping=partial_mapping)
+    match token.split_contents():
+        case "partial", partial_name:
+            extra_data = getattr(parser, "extra_data")
+            partial_mapping = SubDictionaryWrapper(extra_data, "template-partials")
+            return RenderPartialNode(partial_name, partial_mapping=partial_mapping)
+        case _:
+            raise TemplateSyntaxError("'partial' tag requires a single argument")
