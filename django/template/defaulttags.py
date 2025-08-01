@@ -1611,23 +1611,18 @@ def partialdef_func(parser, token):
     The optional ``inline`` argument will render the contents of the partial
     where it is defined.
     """
-    tokens = token.split_contents()
-
-    # Check the number of tokens before trying to assign them via indexes.
-    if (tokens_len := len(tokens)) not in (2, 3):
-        name = token.contents.split()[0]
-        raise TemplateSyntaxError(f"{name} tag requires 2-3 arguments")
-
-    partial_name = tokens[1]
-    if tokens_len > 2:
-        inline = tokens[2]
-        if inline != "inline":
+    match token.split_contents():
+        case "partialdef", partial_name, "inline":
+            inline = True
+        case "partialdef", partial_name, _:
             raise TemplateSyntaxError(
                 "The 'inline' argument does not have any parameters; "
                 "either use 'inline' or remove it completely."
             )
-    else:
-        inline = False
+        case "partialdef", partial_name:
+            inline = False
+        case _:
+            raise TemplateSyntaxError("partialdef tag requires 2-3 arguments")
 
     # Parse the content until the end tag.
     acceptable_endpartials = ("endpartialdef", f"endpartialdef {partial_name}")
