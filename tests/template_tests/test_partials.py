@@ -3,6 +3,7 @@ from unittest import mock
 
 from django.http import HttpResponse
 from django.template import (
+    Context,
     Origin,
     Template,
     TemplateDoesNotExist,
@@ -205,6 +206,25 @@ class RobustPartialHandlingTests(TestCase):
         ):
             Template(template_source, origin=Origin(name="template.html"))
 
+    def test_nested_partials_rendering_with_context(self):
+        template_source = """
+        {% partialdef outer inline %}
+            Hello {{ name }}!
+            {% partialdef inner inline %}
+                Your age is {{ age }}.
+            {% endpartialdef inner %}
+            Nice to meet you.
+        {% endpartialdef outer %}
+        """
+        template = Template(template_source, origin=Origin(name="template.html"))
+
+        context = Context({"name": "Alice", "age": 25})
+        rendered = template.render(context)
+
+        self.assertIn("Hello Alice!", rendered)
+        self.assertIn("Your age is 25.", rendered)
+        self.assertIn("Nice to meet you.", rendered)
+
 
 class FindPartialSourceTests(TestCase):
 
@@ -259,3 +279,37 @@ INLINE-CONTENT
 
         other_result = other_proxy.find_partial_source(template_source, "other")
         self.assertEqual(other_result, "{% partialdef other %}...{% endpartialdef %}")
+
+    def test_find_partial_source_nested_partials(self):
+        template_source = """
+        {% partialdef outer %}
+            Outer partial content
+            {% partialdef inner %}
+                Inner partial content
+            {% endpartialdef %}
+            More outer content
+        {% endpartialdef %}
+        """
+        template = Template(template_source, origin=Origin(name="template.html"))
+
+        partials = template.extra_data["template-partials"]
+
+        self.assertIn("outer", partials)
+        self.assertIn("inner", partials)
+
+        outer_source = partials["outer"].find_partial_source(template_source, "outer")
+        expected_outer = """{% partialdef outer %}
+            Outer partial content
+            {% partialdef inner %}
+                Inner partial content
+            {% endpartialdef %}
+            More outer content
+        {% endpartialdef %}"""
+        self.assertEqual(outer_source, expected_outer.strip())
+
+        inner_proxy = partials["inner"]
+        inner_source = inner_proxy.find_partial_source(template_source, "inner").strip()
+        expected_inner = """{% partialdef inner %}
+                Inner partial content
+            {% endpartialdef %}"""
+        self.assertEqual(inner_source, expected_inner.strip())

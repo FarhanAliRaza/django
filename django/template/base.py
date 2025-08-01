@@ -88,11 +88,11 @@ UNKNOWN_SOURCE = "<unknown source>"
 # than instantiating SimpleLazyObject with _lazy_re_compile().
 tag_re = re.compile(r"({%.*?%}|{{.*?}}|{#.*?#})")
 
-# Match partialdef tag.
-partial_start_tag_re = re.compile(
-    r"\{%\s*partialdef\s+(?P<name>[\w-]+)(?:\s+inline)?\s*%}"
+combined_partial_pattern = (
+    r"(\{% \s* partialdef \s+ (?P<name>[\w-]+) (?:\s+ [^%]*)? \s* %\})"
+    r"|(\{% \s* endpartialdef (?:\s+ [^%]*)? \s* %\})"
 )
-partial_end_tag_re = re.compile(r"\{%\s*endpartialdef\s*%}")
+combined_partial_re = re.compile(combined_partial_pattern, re.VERBOSE)
 
 logger = logging.getLogger("django.template")
 
@@ -310,13 +310,23 @@ class PartialTemplate:
         return template.get_exception_info(exception, token)
 
     def find_partial_source(self, full_source, partial_name):
-        offset = 0
-        for m in partial_start_tag_re.finditer(full_source, offset):
-            offset = partial_end_tag_re.search(full_source, m.end()).end()
-            if m["name"] == partial_name:
-                # Return the full partialdef including the
-                # opening and closing tags.
-                return full_source[m.start() : offset]
+        start_match = None
+        nesting = 0
+
+        for match in combined_partial_re.finditer(full_source):
+            if match.group(1):  # Start tag
+                tag_name = match.group("name")
+                if tag_name == partial_name and start_match is None:
+                    start_match = match
+                    nesting = 1
+                elif start_match is not None:
+                    nesting += 1
+            else:  # End tag (group 2)
+                if start_match is not None:
+                    nesting -= 1
+                    if nesting == 0:
+                        return full_source[start_match.start() : match.end()]
+
         return ""
 
     @property

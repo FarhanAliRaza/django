@@ -241,6 +241,21 @@ Main content with {% partial test-partial %}
     @setup(
         {
             "partial-error06": (
+                "{% partialdef test-partial inline invalid %}"
+                "Content"
+                "{% endpartialdef %}"
+            )
+        }
+    )
+    def test_partial_error06(self):
+        with self.assertRaisesMessage(
+            TemplateSyntaxError, "partialdef tag requires 2-3 arguments"
+        ):
+            self.engine.get_template("partial-error06")
+
+    @setup(
+        {
+            "partial-error07": (
                 "{% partialdef testing-partial %}\n"
                 "HERE IS THE TEST CONTENT\n"
                 "{% endpartialdef invalid %}\n"
@@ -248,9 +263,9 @@ Main content with {% partial test-partial %}
             )
         }
     )
-    def test_partial_error06(self):
+    def test_partial_error07(self):
         with self.assertRaises(TemplateSyntaxError):
-            self.engine.render_to_string("partial-error06")
+            self.engine.render_to_string("partial-error07")
 
     @setup(
         {
