@@ -1007,7 +1007,7 @@ Usage:
     {% endpartialdef %}
 
 The ``{% partialdef %}`` tag takes a required ``partial_name`` argument, which
-is a identifier for the partial:
+is an identifier for the partial:
 
 .. code-block:: html+django
 
