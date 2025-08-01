@@ -2,7 +2,7 @@ import os
 from unittest import mock
 
 from django.http import HttpResponse
-from django.template import TemplateDoesNotExist, engines
+from django.template import Template, TemplateDoesNotExist, engines
 from django.template.backends.django import DjangoTemplates
 from django.template.loader import render_to_string
 from django.test import TestCase, override_settings
@@ -217,3 +217,28 @@ INLINE-CONTENT
             template.source, "nonexistent-partial"
         )
         self.assertEqual(result, "")
+
+    def test_find_partial_source_empty_partial(self):
+        template_source = "{% partialdef empty %}{% endpartialdef %}"
+        template = Template(template_source)
+        partial_proxy = template.extra_data["template-partials"]["empty"]
+
+        result = partial_proxy.find_partial_source(template_source, "empty")
+        self.assertEqual(result, "{% partialdef empty %}{% endpartialdef %}")
+
+    def test_find_partial_source_multiple_consecutive_partials(self):
+
+        template_source = (
+            "{% partialdef empty %}{% endpartialdef %}"
+            "{% partialdef other %}...{% endpartialdef %}"
+        )
+        template = Template(template_source)
+
+        empty_proxy = template.extra_data["template-partials"]["empty"]
+        other_proxy = template.extra_data["template-partials"]["other"]
+
+        empty_result = empty_proxy.find_partial_source(template_source, "empty")
+        self.assertEqual(empty_result, "{% partialdef empty %}{% endpartialdef %}")
+
+        other_result = other_proxy.find_partial_source(template_source, "other")
+        self.assertEqual(other_result, "{% partialdef other %}...{% endpartialdef %}")

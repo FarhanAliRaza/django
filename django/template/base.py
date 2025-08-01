@@ -89,7 +89,9 @@ UNKNOWN_SOURCE = "<unknown source>"
 tag_re = re.compile(r"({%.*?%}|{{.*?}}|{#.*?#})")
 
 # Match partialdef tag.
-partial_start_tag_re = re.compile(r"\{%\s*(partialdef)\s+([\w-]+)(\s+inline)?\s*%}")
+partial_start_tag_re = re.compile(
+    r"\{%\s*partialdef\s+(?P<name>[\w-]+)(?:\s+inline)?\s*%}"
+)
 partial_end_tag_re = re.compile(r"\{%\s*endpartialdef\s*%}")
 
 logger = logging.getLogger("django.template")
@@ -308,19 +310,14 @@ class PartialTemplate:
         return template.get_exception_info(exception, token)
 
     def find_partial_source(self, full_source, partial_name):
-        result = ""
-        pos = 0
-        for m in partial_start_tag_re.finditer(full_source, pos):
-            sspos, sepos = m.span()
-            starter, name, inline = m.groups()
-            endm = partial_end_tag_re.search(full_source, sepos + 1)
-            espos, eepos = endm.span()
-            if name == partial_name:
-                # Include the full partial def from opening to closing tags.
-                result = full_source[sspos:eepos]
-                break
-            pos = eepos + 1
-        return result
+        offset = 0
+        for m in partial_start_tag_re.finditer(full_source, offset):
+            offset = partial_end_tag_re.search(full_source, m.end()).end()
+            if m["name"] == partial_name:
+                # Return the full partialdef including the
+                # opening and closing tags.
+                return full_source[m.start() : offset]
+        return ""
 
     @property
     def source(self):
