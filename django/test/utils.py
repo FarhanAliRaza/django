@@ -111,6 +111,9 @@ def instrumented_test_render(self, context):
     intercepted by the test Client.
     """
     template_rendered.send(sender=self, template=self, context=context)
+    if isinstance(self, PartialTemplate):
+        return _TestState.saved_data.partial_template_render(self, context)
+
     return self.nodelist.render(context)
 
 
