@@ -65,7 +65,7 @@ class PartialTagTests(SimpleTestCase):
             )
         }
     )
-    def test_partial02(self):
+    def test_partial_inline_only(self):
         output = self.engine.render_to_string("partial02")
         self.assertEqual(output.strip(), "HERE IS THE TEST CONTENT")
 
