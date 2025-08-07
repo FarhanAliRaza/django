@@ -80,26 +80,26 @@ class PartialTagTests(SimpleTestCase):
             )
         }
     )
-    def test_partial03(self):
+    def test_partial_inline_only_with_before_and_after_content(self):
         output = self.engine.render_to_string("partial03")
         self.assertEqual(output.strip(), "BEFORE\nHERE IS THE TEST CONTENT\nAFTER")
 
     @setup(
         {
             "partial04": (
-                "{% partialdef testing-partial %}"
+                "{% partialdef testing-partial inline %}"
                 "HERE IS THE TEST CONTENT"
-                "{% endpartialdef testing-partial %}"
+                "{% endpartialdef testing-partial %}\n"
                 "{% partial testing-partial %}"
             )
         }
     )
-    def test_partial04(self):
+    def test_partial_inline_and_used_once(self):
         output = self.engine.render_to_string("partial04")
-        self.assertEqual(output, "HERE IS THE TEST CONTENT")
+        self.assertEqual(output, "HERE IS THE TEST CONTENT\nHERE IS THE TEST CONTENT")
 
     @setup({"partial05": "{% partial undefined-partial %}"})
-    def test_partial05(self):
+    def test_undefined_partial_name(self):
         with self.assertRaisesMessage(
             TemplateSyntaxError,
             "Partial 'undefined-partial' is not defined in the current template.",
@@ -110,16 +110,17 @@ class PartialTagTests(SimpleTestCase):
         {
             "partial06": (
                 "BEFORE\n"
-                "{% partialdef testing-partial inline %}\n"
-                "HERE IS THE TEST CONTENT\n"
+                "{% partialdef testing-partial inline %}"
+                "HERE IS THE TEST CONTENT"
                 "{% endpartialdef %}\n"
-                "AFTER"
+                "AFTER\n"
+                "{% partial testing-partial %}"
             )
         }
     )
-    def test_partial06(self):
+    def test_partial_inline_and_used_once_with_before_and_after_content(self):
         output = self.engine.render_to_string("partial06")
-        self.assertEqual(output.strip(), "BEFORE\n\nHERE IS THE TEST CONTENT\n\nAFTER")
+        self.assertEqual(output.strip(), "BEFORE\nHERE IS THE TEST CONTENT\nAFTER\nHERE IS THE TEST CONTENT")
 
     @setup(
         {
@@ -146,7 +147,7 @@ THIS IS THE SKELETON PARTIAL CONTENT
 TEMPLATE END"""
         }
     )
-    def test_partial08(self):
+    def test_partial_used_before_definition(self):
         output = self.engine.render_to_string("partial08")
         self.assertIn("TEMPLATE START", output)
         self.assertIn("THIS IS THE SKELETON PARTIAL CONTENT", output)
@@ -165,7 +166,7 @@ Main content with {% partial test-partial %}
         },
         partial_templates,
     )
-    def test_partial09(self):
+    def test_partial_defined_outside_main_block(self):
         output = self.engine.render_to_string("partial09")
         self.assertIn("Main content with", output)
         self.assertIn("Content inside partial", output)
@@ -191,81 +192,61 @@ Main content with {% partial test-partial %}
     # Error cases
     @setup(
         {
+            "undefined_name": "{% partial undefined-partial %}",
+            "partial_missing_name": "{% partial %}",
+            "partialdef_missing_name": "{% partialdef %}TEST{% endpartialdef %}",
+            "partialdef_extra_params": (
+                "{% partialdef name inline extra %}TEST{% endpartialdef %}"
+            ),
+            "partialdef_missing_close_tag": "{% partialdef %}",
             "partial-error01": (
-                "{% partialdef testing-partial %}"
+                "{% partialdef partial-name %}"
                 "HERE IS THE TEST CONTENT"
                 "{% endpartialdef invalid %}"
-            )
-        }
-    )
-    def test_partial_error01(self):
-        with self.assertRaises(TemplateSyntaxError):
-            self.engine.get_template("partial-error01")
-
-    @setup({"partial-error02": "{% partialdef %}"})
-    def test_partial_error02(self):
-        with self.assertRaisesMessage(
-            TemplateSyntaxError, "partialdef tag requires 2-3 arguments"
-        ):
-            self.engine.get_template("partial-error02")
-
-    @setup({"partial-error03": "{% partialdef name inline extra %}"})
-    def test_partial_error03(self):
-        with self.assertRaisesMessage(
-            TemplateSyntaxError, "partialdef tag requires 2-3 arguments"
-        ):
-            self.engine.get_template("partial-error03")
-
-    @setup({"partial-error04": "{% partial %}"})
-    def test_partial_error04(self):
-        with self.assertRaisesMessage(
-            TemplateSyntaxError, "'partial' tag requires a single argument"
-        ):
-            self.engine.get_template("partial-error04")
-
-    @setup(
-        {
+            ),
             "partial-error05": (
                 "{% partialdef test-partial inline=true %}"
                 "Content"
                 "{% endpartialdef %}"
-            )
-        }
-    )
-    def test_partial_error05(self):
-        with self.assertRaisesMessage(
-            TemplateSyntaxError, "The 'inline' argument does not have any parameters"
-        ):
-            self.engine.get_template("partial-error05")
-
-    @setup(
-        {
+            ),
             "partial-error06": (
                 "{% partialdef test-partial inline invalid %}"
                 "Content"
                 "{% endpartialdef %}"
-            )
-        }
-    )
-    def test_partial_error06(self):
-        with self.assertRaisesMessage(
-            TemplateSyntaxError, "partialdef tag requires 2-3 arguments"
-        ):
-            self.engine.get_template("partial-error06")
-
-    @setup(
-        {
+            ),
             "partial-error07": (
-                "{% partialdef testing-partial %}\n"
+                "{% partialdef partial-name %}\n"
                 "HERE IS THE TEST CONTENT\n"
                 "{% endpartialdef invalid %}\n"
-                "{% partial testing-partial %}"
-            )
+                "{% partial partial-name %}"
+            ),
         }
     )
-    def test_partial_error07(self):
-        with self.assertRaises(TemplateSyntaxError):
-            self.engine.render_to_string("partial-error07")
+    def test_basic_parse_errors(self):
+        for template_name, error_msg in (
+            (
+                "undefined_name",
+                "Partial 'undefined-partial' is not defined in the current template.",
+            ),
+            ("partial_missing_name", "'partial' tag requires a single argument"),
+            ("partialdef_missing_name", "partialdef tag requires 2-3 arguments"),
+            ("partialdef_missing_close_tag", "partialdef tag requires 2-3 arguments"),
+            (
+                "partial-error01",
+                "expected 'endpartialdef' or 'endpartialdef partial-name'.",
+            ),
+            ("partial-error05", "The 'inline' argument does not have any parameters"),
+            ("partial-error06", "partialdef tag requires 2-3 arguments"),
+            (
+                "partial-error07",
+                "expected 'endpartialdef' or 'endpartialdef partial-name'.",
+            ),
+        ):
+            with (
+                self.subTest(template_name=template_name),
+                self.assertRaisesMessage(TemplateSyntaxError, error_msg),
+            ):
+                self.engine.render_to_string(template_name)
 
     @setup(
         {
