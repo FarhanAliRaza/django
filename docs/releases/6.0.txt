@@ -74,6 +74,38 @@ To get started, follow the :doc:`CSP how-to guide </howto/csp>`. For in-depth
 guidance, see the :ref:`CSP security overview <security-csp>` and the
 :doc:`reference docs </ref/csp>`.
 
+Adoption of Python's modern email API
+-------------------------------------
+
+Email handling in Django now uses Python's modern email API, introduced in
+Python 3.6. This API, centered around the
+:py:class:`email.message.EmailMessage` class, offers a cleaner and
+Unicode-friendly interface for composing and sending emails. It replaces use of
+Python's older legacy (``Compat32``) API, which relied on lower-level MIME
+classes (from :py:mod:`email.mime`) and required more manual handling of
+message structure and encoding.
+
+Notably, the return type of the :class:`EmailMessage.message()
+<django.core.mail.EmailMessage>` method is now an instance of Python's
+:py:class:`email.message.EmailMessage`. This supports the same API as the
+previous ``SafeMIMEText`` and ``SafeMIMEMultipart`` return types, but is not an
+instance of those now-deprecated classes.
+
+Template Partials
+-----------------
+
+The :ref:`Django Template Language <template-language-intro>` now supports
+:ref:`template partials <template-partials>` , making it easier to encapsulate
+and reuse small named fragments within a template file. The new tags
+:ttag:`{% partialdef %} <partialdef>` and :ttag:`{% partial %} <partial>`
+define a partial and render it, respectively.
+
+Partials can also be referenced using the ``template_name#partial_name`` syntax
+with :func:`~django.template.Engine.get_template`,
+:func:`~django.shortcuts.render`, :ttag:`{% include %}<include>`, and other
+template-loading tools, enabling more modular and maintainable templates
+without needing to split components into separate files.
+
 Minor features
 --------------
 
@@ -119,6 +151,10 @@ Minor features
   :class:`~django.contrib.gis.db.models.functions.IsValid` database functions
   are now supported on MariaDB 12.0.1+.
 
+* The new :lookup:`geom_type` lookup and
+  :class:`GeometryType() <django.contrib.gis.db.models.functions.GeometryType>`
+  database function allow filtering geometries by their types.
+
 :mod:`django.contrib.messages`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -130,6 +166,14 @@ Minor features
 * Model fields, indexes, and constraints from :mod:`django.contrib.postgres`
   now include system checks to verify that ``django.contrib.postgres`` is an
   installed app.
+
+* The :class:`.CreateExtension`, :class:`.BloomExtension`,
+  :class:`.BtreeGinExtension`, :class:`.BtreeGistExtension`,
+  :class:`.CITextExtension`, :class:`.CryptoExtension`,
+  :class:`.HStoreExtension`, :class:`.TrigramExtension`, and
+  :class:`.UnaccentExtension` operations now support the optional ``hints``
+  parameter. This allows providing database hints to database routers to assist
+  them in :ref:`making routing decisions <topics-db-multi-db-hints>`.
 
 :mod:`django.contrib.redirects`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -181,7 +225,13 @@ Decorators
 Email
 ~~~~~
 
-* ...
+* The new ``policy`` argument for :class:`EmailMessage.message()
+  <django.core.mail.EmailMessage>` allows specifying the email policy, the set
+  of rules for updating and serializing the representation of the message.
+  Defaults to :py:data:`email.policy.default`.
+
+* :class:`EmailMessage.attach() <django.core.mail.EmailMessage>` now accepts a
+  :class:`~email.message.MIMEPart` object from Python's modern email API.
 
 Error Reporting
 ~~~~~~~~~~~~~~~
@@ -223,6 +273,9 @@ Management Commands
 
 * The :djadmin:`startproject` and :djadmin:`startapp` commands now create the
   custom target directory if it doesn't exist.
+
+* Common utilities, such as ``django.conf.settings``, are now automatically
+  imported to the :djadmin:`shell` by default.
 
 Migrations
 ~~~~~~~~~~
@@ -310,7 +363,8 @@ Templates
 Tests
 ~~~~~
 
-* ...
+* The :class:`.DiscoverRunner` now supports parallel test execution on systems
+  using the ``forkserver`` :mod:`multiprocessing` start method.
 
 URLs
 ~~~~
@@ -372,6 +426,22 @@ of each library are the first to add or confirm compatibility with Python 3.12:
 * ``sqlparse`` 0.5.0
 * ``tblib`` 3.0.0
 
+Email
+-----
+
+* The undocumented ``mixed_subtype`` and ``alternative_subtype`` properties
+  of :class:`~django.core.mail.EmailMessage` and
+  :class:`~django.core.mail.EmailMultiAlternatives` are no longer supported.
+
+* The undocumented ``encoding`` property of
+  :class:`~django.core.mail.EmailMessage` no longer supports Python legacy
+  :py:class:`email.charset.Charset` objects.
+
+* As the internal implementations of :class:`~django.core.mail.EmailMessage`
+  and :class:`~django.core.mail.EmailMultiAlternatives` have changed
+  significantly, closely examine any custom subclasses that rely on overriding
+  undocumented, internal underscore methods.
+
 Miscellaneous
 -------------
 
@@ -402,6 +472,28 @@ Miscellaneous
 Features deprecated in 6.0
 ==========================
 
+Positional arguments in ``django.core.mail`` APIs
+-------------------------------------------------
+
+.. currentmodule:: django.core.mail
+
+:mod:`django.core.mail` APIs now require keyword arguments for less commonly
+used parameters. Using positional arguments for these now emits a deprecation
+warning and will raise a :exc:`TypeError` when the deprecation period ends.
+
+* All *optional* parameters (``fail_silently`` and later) must be passed as
+  keyword arguments to :func:`get_connection`,  :func:`mail_admins`,
+  :func:`mail_managers`, :func:`send_mail`, and :func:`send_mass_mail`.
+
+* All parameters must be passed as keyword arguments when creating an
+  :class:`EmailMessage` or :class:`EmailMultiAlternatives` instance, except for
+  the first four (``subject``, ``body``, ``from_email``, and ``to``), which may
+  still be passed either as positional or keyword arguments.
+
+* :mod:`django.core.mail` APIs now require keyword arguments for less commonly
+  used parameters. Using positional arguments for these now emits a deprecation
+  warning and will raise a :exc:`TypeError` when the deprecation period ends:
+
 Miscellaneous
 -------------
 
@@ -431,6 +523,22 @@ Miscellaneous
   :class:`django.core.paginator.AsyncPaginator` is deprecated.
 
 * Using a percent sign in a column alias or annotation is deprecated.
+
+* Support for passing Python's legacy email :class:`~email.mime.base.MIMEBase`
+  object to :class:`EmailMessage.attach() <django.core.mail.EmailMessage>` (or
+  including one in the message's ``attachments`` list) is deprecated. For
+  complex attachments requiring additional headers or parameters, switch to the
+  modern email API's :class:`~email.message.MIMEPart`.
+
+* The ``django.core.mail.BadHeaderError`` exception is deprecated. Python's
+  modern email raises a :exc:`!ValueError` for email headers containing
+  prohibited characters.
+
+* The ``django.core.mail.SafeMIMEText`` and ``SafeMIMEMultipart`` classes are
+  deprecated.
+
+* The undocumented ``django.core.mail.forbid_multi_line_headers()`` and
+  ``django.core.mail.message.sanitize_address()`` functions are deprecated.
 
 Features removed in 6.0
 =======================
