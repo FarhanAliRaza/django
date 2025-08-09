@@ -120,7 +120,10 @@ class PartialTagTests(SimpleTestCase):
     )
     def test_partial_inline_and_used_once_with_before_and_after_content(self):
         output = self.engine.render_to_string("partial06")
-        self.assertEqual(output.strip(), "BEFORE\nHERE IS THE TEST CONTENT\nAFTER\nHERE IS THE TEST CONTENT")
+        self.assertEqual(
+            output.strip(),
+            "BEFORE\nHERE IS THE TEST CONTENT\nAFTER\nHERE IS THE TEST CONTENT",
+        )
 
     @setup(
         {
@@ -132,7 +135,7 @@ class PartialTagTests(SimpleTestCase):
             )
         }
     )
-    def test_partial07(self):
+    def test_partial_rendering_with_optional_endname(self):
         output = self.engine.render_to_string("partial07")
         self.assertEqual(output.strip(), "HERE IS THE TEST CONTENT")
 
