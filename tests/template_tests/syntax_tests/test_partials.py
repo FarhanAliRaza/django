@@ -45,7 +45,7 @@ class PartialTagTests(SimpleTestCase):
 
     @setup(
         {
-            "partial01": (
+            "basic-partial-definition": (
                 "{% partialdef testing-partial %}"
                 "HERE IS THE TEST CONTENT"
                 "{% endpartialdef %}"
@@ -54,12 +54,12 @@ class PartialTagTests(SimpleTestCase):
         }
     )
     def test_partial_not_inline_used_once(self):
-        output = self.engine.render_to_string("partial01")
+        output = self.engine.render_to_string("basic-partial-definition")
         self.assertEqual(output, "HERE IS THE TEST CONTENT")
 
     @setup(
         {
-            "partial02": (
+            "inline-partial-definition": (
                 "{% partialdef testing-partial inline %}"
                 "HERE IS THE TEST CONTENT"
                 "{% endpartialdef %}"
@@ -67,12 +67,12 @@ class PartialTagTests(SimpleTestCase):
         }
     )
     def test_partial_inline_only(self):
-        output = self.engine.render_to_string("partial02")
+        output = self.engine.render_to_string("inline-partial-definition")
         self.assertEqual(output.strip(), "HERE IS THE TEST CONTENT")
 
     @setup(
         {
-            "partial03": (
+            "inline-partial-with-context": (
                 "BEFORE\n"
                 "{% partialdef testing-partial inline %}"
                 "HERE IS THE TEST CONTENT"
@@ -82,12 +82,12 @@ class PartialTagTests(SimpleTestCase):
         }
     )
     def test_partial_inline_only_with_before_and_after_content(self):
-        output = self.engine.render_to_string("partial03")
+        output = self.engine.render_to_string("inline-partial-with-context")
         self.assertEqual(output.strip(), "BEFORE\nHERE IS THE TEST CONTENT\nAFTER")
 
     @setup(
         {
-            "partial04": (
+            "inline-partial-explicit-end": (
                 "{% partialdef testing-partial inline %}"
                 "HERE IS THE TEST CONTENT"
                 "{% endpartialdef testing-partial %}\n"
@@ -96,31 +96,31 @@ class PartialTagTests(SimpleTestCase):
         }
     )
     def test_partial_inline_and_used_once(self):
-        output = self.engine.render_to_string("partial04")
+        output = self.engine.render_to_string("inline-partial-explicit-end")
         self.assertEqual(output, "HERE IS THE TEST CONTENT\nHERE IS THE TEST CONTENT")
 
-    @setup({"partial05": "{% partial undefined-partial %}"})
+    @setup({"undefined-partial-usage": "{% partial undefined-partial %}"})
     def test_undefined_partial_name(self):
         with self.assertRaisesMessage(
             TemplateSyntaxError,
             "Partial 'undefined-partial' is not defined in the current template.",
         ):
-            self.engine.render_to_string("partial05")
+            self.engine.render_to_string("undefined-partial-usage")
 
     @setup(
         {
-            "partial06": (
+            "inline-partial-with-usage": (
                 "BEFORE\n"
-                "{% partialdef testing-partial inline %}"
+                "{% partialdef content-snippet inline %}"
                 "HERE IS THE TEST CONTENT"
                 "{% endpartialdef %}\n"
                 "AFTER\n"
-                "{% partial testing-partial %}"
+                "{% partial content-snippet %}"
             )
         }
     )
     def test_partial_inline_and_used_once_with_before_and_after_content(self):
-        output = self.engine.render_to_string("partial06")
+        output = self.engine.render_to_string("inline-partial-with-usage")
         self.assertEqual(
             output.strip(),
             "BEFORE\nHERE IS THE TEST CONTENT\nAFTER\nHERE IS THE TEST CONTENT",
@@ -128,7 +128,7 @@ class PartialTagTests(SimpleTestCase):
 
     @setup(
         {
-            "partial07": (
+            "partial-with-newlines": (
                 "{% partialdef testing-partial %}\n"
                 "HERE IS THE TEST CONTENT\n"
                 "{% endpartialdef testing-partial %}\n"
@@ -137,12 +137,12 @@ class PartialTagTests(SimpleTestCase):
         }
     )
     def test_partial_rendering_with_optional_endname(self):
-        output = self.engine.render_to_string("partial07")
+        output = self.engine.render_to_string("partial-with-newlines")
         self.assertEqual(output.strip(), "HERE IS THE TEST CONTENT")
 
     @setup(
         {
-            "partial08": """TEMPLATE START
+            "partial-used-before-definition": """TEMPLATE START
 {% partial skeleton-partial %}
 MIDDLE CONTENT
 {% partialdef skeleton-partial %}
@@ -152,7 +152,7 @@ TEMPLATE END"""
         }
     )
     def test_partial_used_before_definition(self):
-        output = self.engine.render_to_string("partial08")
+        output = self.engine.render_to_string("partial-used-before-definition")
         self.assertIn("TEMPLATE START", output)
         self.assertIn("THIS IS THE SKELETON PARTIAL CONTENT", output)
         self.assertIn("MIDDLE CONTENT", output)
@@ -160,7 +160,7 @@ TEMPLATE END"""
 
     @setup(
         {
-            "partial09": """{% extends 'partial_base.html' %}
+            "partial-with-extends": """{% extends 'partial_base.html' %}
 {% partialdef test-partial %}
 Content inside partial
 {% endpartialdef %}
@@ -171,13 +171,13 @@ Main content with {% partial test-partial %}
         partial_templates,
     )
     def test_partial_defined_outside_main_block(self):
-        output = self.engine.render_to_string("partial09")
+        output = self.engine.render_to_string("partial-with-extends")
         self.assertIn("Main content with", output)
         self.assertIn("Content inside partial", output)
 
     @setup(
         {
-            "partial10": (
+            "partial-with-include": (
                 "MAIN TEMPLATE START "
                 "{% include 'partial_included.html' %} "
                 "MAIN TEMPLATE END"
@@ -186,7 +186,7 @@ Main content with {% partial test-partial %}
         partial_templates,
     )
     def test_partial_in_included_template(self):
-        output = self.engine.render_to_string("partial10")
+        output = self.engine.render_to_string("partial-with-include")
         self.assertIn("MAIN TEMPLATE START", output)
         self.assertIn("INCLUDED TEMPLATE START", output)
         self.assertIn("THIS IS CONTENT FROM THE INCLUDED PARTIAL", output)
@@ -277,7 +277,7 @@ Main content with {% partial test-partial %}
 
     @setup(
         {
-            "template": """<h1>Title</h1>
+            "partial-with-variable-error": """<h1>Title</h1>
 {% partialdef test-partial %}
 <p>{{ nonexistent|default:alsonotthere }}</p>
 {% endpartialdef %}
@@ -287,7 +287,7 @@ Main content with {% partial test-partial %}
         }
     )
     def test_partial_runtime_exception_has_debug_info(self):
-        template = self.engine.get_template("template")
+        template = self.engine.get_template("partial-with-variable-error")
         context = Context({})
 
         if hasattr(self.engine, "string_if_invalid") and self.engine.string_if_invalid:
@@ -305,12 +305,12 @@ Main content with {% partial test-partial %}
                     exc_info["during"], "{{ nonexistent|default:alsonotthere }}"
                 )
                 self.assertEqual(exc_info["line"], 3)
-                self.assertEqual(exc_info["name"], "template")
+                self.assertEqual(exc_info["name"], "partial-with-variable-error")
                 self.assertIn("Failed lookup", exc_info["message"])
 
     @setup(
         {
-            "template": """<h1>Title</h1>
+            "partial-exception-info-test": """<h1>Title</h1>
 {% partialdef test-partial %}
 <p>Content</p>
 {% endpartialdef %}
@@ -319,7 +319,7 @@ Main content with {% partial test-partial %}
     )
     def test_partial_template_get_exception_info_delegation(self):
         if self.engine.debug:
-            template = self.engine.get_template("template")
+            template = self.engine.get_template("partial-exception-info-test")
 
             partial_template = template.extra_data["template-partials"]["test-partial"]
 
@@ -334,19 +334,19 @@ Main content with {% partial test-partial %}
             self.assertIn("message", exc_info)
             self.assertIn("line", exc_info)
             self.assertIn("name", exc_info)
-            self.assertEqual(exc_info["name"], "template")
+            self.assertEqual(exc_info["name"], "partial-exception-info-test")
             self.assertEqual(exc_info["message"], "Test exception")
 
     @setup(
         {
-            "template": """<h1>Header</h1>
+            "partial-with-undefined-reference": """<h1>Header</h1>
 {% partial undefined-partial %}
 <p>After undefined partial</p>
 """,
         }
     )
     def test_undefined_partial_exception_info(self):
-        template = self.engine.get_template("template")
+        template = self.engine.get_template("partial-with-undefined-reference")
         with self.assertRaises(TemplateSyntaxError) as cm:
             template.render(Context())
 
@@ -358,7 +358,7 @@ Main content with {% partial test-partial %}
 
             self.assertEqual(exc_debug["during"], "{% partial undefined-partial %}")
             self.assertEqual(exc_debug["line"], 2)
-            self.assertEqual(exc_debug["name"], "template")
+            self.assertEqual(exc_debug["name"], "partial-with-undefined-reference")
             self.assertIn("undefined-partial", exc_debug["message"])
 
     @setup(
@@ -376,7 +376,7 @@ Main content with {% partial test-partial %}
 
     @setup(
         {
-            "template": """<h1>Title</h1>
+            "partial-with-syntax-error": """<h1>Title</h1>
 {% partialdef syntax-error-partial %}
     {% if user %}
         <p>User: {{ user.name }}</p>
@@ -389,7 +389,7 @@ Main content with {% partial test-partial %}
     )
     def test_partial_with_syntax_error_exception_info(self):
         with self.assertRaises(TemplateSyntaxError) as cm:
-            self.engine.get_template("template")
+            self.engine.get_template("partial-with-syntax-error")
 
         self.assertIn("endif", str(cm.exception).lower())
 
@@ -397,12 +397,12 @@ Main content with {% partial test-partial %}
             exc_debug = cm.exception.template_debug
 
             self.assertIn("endpartialdef", exc_debug["during"])
-            self.assertEqual(exc_debug["name"], "template")
+            self.assertEqual(exc_debug["name"], "partial-with-syntax-error")
             self.assertIn("endif", exc_debug["message"].lower())
 
     @setup(
         {
-            "template": """<h1>Title</h1>
+            "partial-with-runtime-error": """<h1>Title</h1>
 {% load bad_tag %}
 {% partialdef runtime-error-partial %}
     <p>This will raise an error:</p>
@@ -413,7 +413,7 @@ Main content with {% partial test-partial %}
         }
     )
     def test_partial_runtime_error_exception_info(self):
-        template = self.engine.get_template("template")
+        template = self.engine.get_template("partial-with-runtime-error")
         context = Context()
 
         with self.assertRaises(RuntimeError) as cm:
@@ -424,12 +424,12 @@ Main content with {% partial test-partial %}
 
             self.assertIn("badsimpletag", exc_debug["during"])
             self.assertEqual(exc_debug["line"], 5)  # Line 5 is where badsimpletag is
-            self.assertEqual(exc_debug["name"], "template")
+            self.assertEqual(exc_debug["name"], "partial-with-runtime-error")
             self.assertIn("bad simpletag", exc_debug["message"])
 
     @setup(
         {
-            "template": """<h1>Title</h1>
+            "nested-partial-with-undefined-var": """<h1>Title</h1>
 {% partialdef outer-partial %}
     <div class="outer">
         {% partialdef inner-partial %}
@@ -443,7 +443,7 @@ Main content with {% partial test-partial %}
         }
     )
     def test_nested_partial_error_exception_info(self):
-        template = self.engine.get_template("template")
+        template = self.engine.get_template("nested-partial-with-undefined-var")
         context = Context()
         output = template.render(context)
 
