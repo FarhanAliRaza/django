@@ -88,11 +88,10 @@ UNKNOWN_SOURCE = "<unknown source>"
 # than instantiating SimpleLazyObject with _lazy_re_compile().
 tag_re = re.compile(r"({%.*?%}|{{.*?}}|{#.*?#})")
 
-combined_partial_pattern = (
-    r"(\{% \s* partialdef \s+ (?P<name>[\w-]+) (?:\s+ [^%]*)? \s* %\})"
-    r"|(\{% \s* endpartialdef (?:\s+ [^%]*)? \s* %\})"
+combined_partial_re = re.compile(
+    r"{%\s*partialdef\s+(?P<name>[\w-]+)(?:\s+inline)?\s*%}"
+    r"|{%\s*endpartialdef(?:\s+[\w-]+)?\s*%}"
 )
-combined_partial_re = re.compile(combined_partial_pattern, re.VERBOSE)
 
 logger = logging.getLogger("django.template")
 
@@ -314,18 +313,15 @@ class PartialTemplate:
         nesting = 0
 
         for match in combined_partial_re.finditer(full_source):
-            if match.group(1):  # Start tag
-                tag_name = match.group("name")
-                if tag_name == partial_name and start_match is None:
+            if match["name"]:  # Start Tag
+                if start_match is None and match["name"] == partial_name:
                     start_match = match
-                    nesting = 1
-                elif start_match is not None:
-                    nesting += 1
-            else:  # End tag (group 2)
                 if start_match is not None:
-                    nesting -= 1
-                    if nesting == 0:
-                        return full_source[start_match.start() : match.end()]
+                    nesting += 1
+            elif start_match is not None:
+                nesting -= 1
+                if nesting == 0:
+                    return full_source[start_match.start() : match.end()]
 
         return ""
 

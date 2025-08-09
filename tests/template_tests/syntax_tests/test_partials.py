@@ -519,3 +519,55 @@ Main content with {% partial test-partial %}
         self.assertIn("undefined_filter", exc_debug["during"])
         self.assertEqual(exc_debug["name"], "child.html")
         self.assertIn("undefined_filter", exc_debug["message"])
+
+    @setup(
+        {
+            "partial-broken-nesting": (
+                "<div>Before partial</div>\n"
+                "{% partialdef outer %}\n"
+                "{% partialdef inner %}...{% endpartialdef outer %}\n"
+                "{% endpartialdef inner %}\n"
+                "<div>After partial content</div>"
+            )
+        }
+    )
+    def test_broken_partial_nesting(self):
+        with self.assertRaises(TemplateSyntaxError) as cm:
+            self.engine.get_template("partial-broken-nesting")
+
+        self.assertIn("endpartialdef", str(cm.exception))
+        self.assertIn("Invalid block tag", str(cm.exception))
+        self.assertIn("'endpartialdef inner'", str(cm.exception))
+
+        reporter = ExceptionReporter(None, cm.exception.__class__, cm.exception, None)
+        traceback_data = reporter.get_traceback_data()
+
+        exception_value = str(traceback_data.get("exception_value", ""))
+        self.assertIn("Invalid block tag", exception_value)
+        self.assertIn("'endpartialdef inner'", str(cm.exception))
+
+    @setup(
+        {
+            "partial-broken-nesting-mixed": (
+                "<div>Before partial</div>\n"
+                "{% partialdef outer %}\n"
+                "{% partialdef inner %}...{% endpartialdef %}\n"
+                "{% endpartialdef inner %}\n"
+                "<div>After partial content</div>"
+            )
+        }
+    )
+    def test_broken_partial_nesting_mixed(self):
+        with self.assertRaises(TemplateSyntaxError) as cm:
+            self.engine.get_template("partial-broken-nesting-mixed")
+
+        self.assertIn("endpartialdef", str(cm.exception))
+        self.assertIn("Invalid block tag", str(cm.exception))
+        self.assertIn("'endpartialdef outer'", str(cm.exception))
+
+        reporter = ExceptionReporter(None, cm.exception.__class__, cm.exception, None)
+        traceback_data = reporter.get_traceback_data()
+
+        exception_value = str(traceback_data.get("exception_value", ""))
+        self.assertIn("Invalid block tag", exception_value)
+        self.assertIn("'endpartialdef outer'", str(cm.exception))
