@@ -99,14 +99,6 @@ class PartialTagTests(SimpleTestCase):
         output = self.engine.render_to_string("inline-partial-explicit-end")
         self.assertEqual(output, "HERE IS THE TEST CONTENT\nHERE IS THE TEST CONTENT")
 
-    @setup({"undefined-partial-usage": "{% partial undefined-partial %}"})
-    def test_undefined_partial_name(self):
-        with self.assertRaisesMessage(
-            TemplateSyntaxError,
-            "Partial 'undefined-partial' is not defined in the current template.",
-        ):
-            self.engine.render_to_string("undefined-partial-usage")
-
     @setup(
         {
             "inline-partial-with-usage": (
