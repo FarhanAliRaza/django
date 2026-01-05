@@ -1,0 +1,9 @@
+# Multipart Parser Benchmark
+
+# Run benchmarks
+bench:
+    ./run_benchmarks.sh benchmark_results.txt
+
+# Show results
+results:
+    @cat benchmark_results.txt
